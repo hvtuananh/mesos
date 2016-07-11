@@ -30,6 +30,11 @@
 namespace process {
 namespace metrics {
 
+// Use std::hash<int> because using enum as hashmap key in C++11
+// is not yet supported.
+typedef hashmap<MetricType, hashmap<std::string, double>, std::hash<int>>
+    MetricMap;
+
 // Initializes the metrics library.
 void initialize(const Option<std::string>& authenticationRealm = None());
 
@@ -46,6 +51,8 @@ public:
 
   Future<hashmap<std::string, double>> snapshot(
       const Option<Duration>& timeout);
+
+  Future<MetricMap> snapshotByTypes(const Option<Duration>& timeout);
 
 protected:
   virtual void initialize();
@@ -75,6 +82,12 @@ private:
   static Future<hashmap<std::string, double>> __snapshot(
       const Option<Duration>& timeout,
       const hashmap<std::string, Future<double>>& metrics,
+      const hashmap<std::string, Option<Statistics<double>>>& statistics);
+
+  static Future<MetricMap> __snapshotByTypes(
+      const Option<Duration>& timeout,
+      const hashmap<std::string, Future<double>>& metrics,
+      const hashmap<std::string, MetricType>& metric_types,
       const hashmap<std::string, Option<Statistics<double>>>& statistics);
 
   // The Owned<Metric> is an explicit copy of the Metric passed to 'add'.
@@ -121,6 +134,16 @@ inline Future<hashmap<std::string, double>> snapshot(
   return dispatch(
       internal::MetricsProcess::instance(),
       &internal::MetricsProcess::snapshot,
+      timeout);
+}
+
+
+inline Future<MetricMap> snapshotByTypes(
+    const Option<Duration>& timeout)
+{
+  return dispatch(
+      internal::MetricsProcess::instance(),
+      &internal::MetricsProcess::snapshotByTypes,
       timeout);
 }
 

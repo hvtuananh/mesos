@@ -202,6 +202,34 @@ Future<hashmap<string, double>> MetricsProcess::snapshot(
 }
 
 
+Future<MetricMap> MetricsProcess::snapshotByTypes(
+    const Option<Duration>& timeout)
+{
+  hashmap<string, Future<double>> futures;
+  hashmap<string, MetricType> metric_types;
+  hashmap<string, Option<Statistics<double>>> statistics;
+
+  foreachkey (const string& metric, metrics) {
+    CHECK_NOTNULL(metrics[metric].get());
+    futures[metric] = metrics[metric]->value();
+    metric_types[metric] = metrics[metric]->type();
+    // TODO(dhamon): It would be nice to compute these asynchronously.
+    statistics[metric] = metrics[metric]->statistics();
+  }
+
+  if (timeout.isSome()) {
+    return await(futures.values())
+      .after(timeout.get(), lambda::bind(_snapshotTimeout, futures.values()))
+      .then(lambda::bind(
+          __snapshotByTypes, timeout, futures, metric_types, statistics));
+  } else {
+    return await(futures.values())
+      .then(lambda::bind(
+          __snapshotByTypes, timeout, futures, metric_types, statistics));
+  }
+}
+
+
 Future<http::Response> MetricsProcess::_snapshot(
     const http::Request& request,
     const Option<string>& /* principal */)
@@ -275,6 +303,45 @@ Future<hashmap<string, double>> MetricsProcess::__snapshot(
       snapshot[key + "/p99"] = statistics_.get().p99;
       snapshot[key + "/p999"] = statistics_.get().p999;
       snapshot[key + "/p9999"] = statistics_.get().p9999;
+    }
+  }
+
+  return snapshot;
+}
+
+
+Future<MetricMap> MetricsProcess::__snapshotByTypes(
+    const Option<Duration>& timeout,
+    const hashmap<string, Future<double>>& metrics,
+    const hashmap<string, MetricType>& metric_types,
+    const hashmap<string, Option<Statistics<double>>>& statistics)
+{
+  MetricMap snapshot;
+
+  foreachpair (const string& key, const Future<double>& value, metrics) {
+    // TODO(dhamon): Maybe add the failure message for this metric to the
+    // response if value.isFailed().
+    MetricType metric_type = metric_types.get(key).get();
+    if (value.isPending()) {
+      CHECK_SOME(timeout);
+      VLOG(1) << "Exceeded timeout of " << timeout.get()
+              << " when attempting to get metric '" << key << "'";
+    } else if (value.isReady()) {
+      snapshot[metric_type][key] = value.get();
+    }
+
+    Option<Statistics<double>> statistics_ = statistics.get(key).get();
+
+    if (statistics_.isSome()) {
+      snapshot[metric_type][key + "/count"] = statistics_.get().count;
+      snapshot[metric_type][key + "/min"] = statistics_.get().min;
+      snapshot[metric_type][key + "/max"] = statistics_.get().max;
+      snapshot[metric_type][key + "/p50"] = statistics_.get().p50;
+      snapshot[metric_type][key + "/p90"] = statistics_.get().p90;
+      snapshot[metric_type][key + "/p95"] = statistics_.get().p95;
+      snapshot[metric_type][key + "/p99"] = statistics_.get().p99;
+      snapshot[metric_type][key + "/p999"] = statistics_.get().p999;
+      snapshot[metric_type][key + "/p9999"] = statistics_.get().p9999;
     }
   }
 
