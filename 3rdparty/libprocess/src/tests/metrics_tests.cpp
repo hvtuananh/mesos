@@ -114,6 +114,8 @@ TEST_F(MetricsTest, Counter)
 {
   Counter counter("test/counter");
 
+  EXPECT_EQ(metrics::COUNTER, counter.type());
+
   AWAIT_READY(metrics::add(counter));
 
   AWAIT_EXPECT_EQ(0.0, counter.value());
@@ -146,6 +148,8 @@ TEST_F(MetricsTest, Gauge)
 
   // Gauge with a value.
   Gauge gauge("test/gauge", defer(pid, &GaugeProcess::get));
+
+  EXPECT_EQ(metrics::GAUGE, gauge.type());
 
   AWAIT_READY(metrics::add(gauge));
 
@@ -445,6 +449,8 @@ TEST_F(MetricsTest, Timer)
 {
   metrics::Timer<Nanoseconds> timer("test/timer");
   EXPECT_EQ("test/timer_ns", timer.name());
+
+  EXPECT_EQ(metrics::TIMER, timer.type());
 
   AWAIT_READY(metrics::add(timer));
 

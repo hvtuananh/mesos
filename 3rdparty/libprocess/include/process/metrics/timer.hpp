@@ -39,7 +39,7 @@ class Timer : public Metric
 public:
   // The Timer name will have a unit suffix added automatically.
   Timer(const std::string& name, const Option<Duration>& window = None())
-    : Metric(name + "_" + T::units(), window),
+    : Metric(name + "_" + T::units(), TIMER, window),
       data(new Data()) {}
 
   Future<double> value() const

@@ -32,7 +32,7 @@ public:
   // It will be the key exposed in the JSON endpoint.
   // 'f' is the deferred object called when the Metric value is requested.
   Gauge(const std::string& name, const Deferred<Future<double>()>& f)
-    : Metric(name, None()), data(new Data(f)) {}
+    : Metric(name, GAUGE, None()), data(new Data(f)) {}
 
   virtual ~Gauge() {}
 

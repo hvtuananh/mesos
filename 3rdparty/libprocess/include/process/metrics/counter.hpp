@@ -30,7 +30,7 @@ public:
   // This is what will be used as the key in the JSON endpoint.
   // 'window' is the amount of history to keep for this Metric.
   Counter(const std::string& name, const Option<Duration>& window = None())
-    : Metric(name, window),
+    : Metric(name, COUNTER, window),
       data(new Data())
   {
     push(data->value.load());

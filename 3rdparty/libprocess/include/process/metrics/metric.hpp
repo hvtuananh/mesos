@@ -29,6 +29,15 @@
 namespace process {
 namespace metrics {
 
+// Describing different metric types.
+enum MetricType
+{
+  UNKNOWN,
+  COUNTER,
+  GAUGE,
+  TIMER,
+};
+
 // The base class for Metrics such as Counter and Gauge.
 class Metric {
 public:
@@ -39,6 +48,11 @@ public:
   const std::string& name() const
   {
     return data->name;
+  }
+
+  const MetricType type() const
+  {
+    return data->type;
   }
 
   Option<Statistics<double>> statistics() const
@@ -59,6 +73,12 @@ protected:
   Metric(const std::string& name, const Option<Duration>& window)
     : data(new Data(name, window)) {}
 
+  Metric(
+      const std::string& name,
+      const MetricType type,
+      const Option<Duration>& window)
+    : data(new Data(name, type, window)) {}
+
   // Inserts 'value' into the history for this metric.
   void push(double value) {
     if (data->history.isSome()) {
@@ -73,7 +93,14 @@ protected:
 private:
   struct Data {
     Data(const std::string& _name, const Option<Duration>& window)
+      : Data(_name, UNKNOWN, window) {}
+
+    Data(
+        const std::string& _name,
+        const MetricType _type,
+        const Option<Duration>& window)
       : name(_name),
+        type(_type),
         history(None())
     {
       if (window.isSome()) {
@@ -83,6 +110,8 @@ private:
     }
 
     const std::string name;
+
+    const MetricType type;
 
     std::atomic_flag lock = ATOMIC_FLAG_INIT;
 
