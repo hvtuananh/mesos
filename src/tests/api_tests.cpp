@@ -326,7 +326,19 @@ TEST_P(MasterAPITest, GetMetrics)
   hashmap<string, double> metrics;
 
   foreach (const v1::Metric& metric,
-           v1Response.get().get_metrics().metrics()) {
+           v1Response.get().get_metrics().counters()) {
+    ASSERT_TRUE(metric.has_value());
+    metrics[metric.name()] = metric.value();
+  }
+
+  foreach (const v1::Metric& metric,
+           v1Response.get().get_metrics().gauges()) {
+    ASSERT_TRUE(metric.has_value());
+    metrics[metric.name()] = metric.value();
+  }
+
+  foreach (const v1::Metric& metric,
+           v1Response.get().get_metrics().timers()) {
     ASSERT_TRUE(metric.has_value());
     metrics[metric.name()] = metric.value();
   }

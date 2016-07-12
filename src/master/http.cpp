@@ -114,6 +114,8 @@ using process::http::UnsupportedMediaType;
 using process::http::URL;
 
 using process::metrics::internal::MetricsProcess;
+using process::metrics::MetricType;
+using process::metrics::MetricMap;
 
 using std::copy_if;
 using std::list;
@@ -1904,17 +1906,41 @@ Future<Response> Master::Http::getMetrics(
     timeout = Nanoseconds(call.get_metrics().timeout().nanoseconds());
   }
 
-  return process::metrics::snapshot(timeout)
-      .then([contentType](const hashmap<string, double>& metrics) -> Response {
+  return process::metrics::snapshotByTypes(timeout)
+      .then([contentType](const MetricMap& metrics) -> Response {
         mesos::master::Response response;
         response.set_type(mesos::master::Response::GET_METRICS);
         mesos::master::Response::GetMetrics* _getMetrics =
           response.mutable_get_metrics();
 
-        foreachpair (const string& key, double value, metrics) {
-          Metric* metric = _getMetrics->add_metrics();
-          metric->set_name(key);
-          metric->set_value(value);
+        if (metrics.count(MetricType::COUNTER)) {
+          foreachpair (const string& key,
+                       double value,
+                       metrics.at(MetricType::COUNTER)) {
+            Metric* metric = _getMetrics->add_counters();
+            metric->set_name(key);
+            metric->set_value(value);
+          }
+        }
+
+        if (metrics.count(MetricType::GAUGE)) {
+          foreachpair (const string& key,
+                       double value,
+                       metrics.at(MetricType::GAUGE)) {
+            Metric* metric = _getMetrics->add_gauges();
+            metric->set_name(key);
+            metric->set_value(value);
+          }
+        }
+
+        if (metrics.count(MetricType::TIMER)) {
+          foreachpair (const string& key,
+                       double value,
+                       metrics.at(MetricType::TIMER)) {
+            Metric* metric = _getMetrics->add_timers();
+            metric->set_name(key);
+            metric->set_value(value);
+          }
         }
 
         return OK(serialize(contentType, evolve(response)),

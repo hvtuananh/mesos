@@ -261,7 +261,9 @@ message Response {
 
   // Contains a snapshot of the current metrics.
   message GetMetrics {
-    repeated Metric metrics = 1;
+    repeated Metric counters = 1;
+    repeated Metric gauges = 2;
+    repeated Metric timers = 3;
   }
 
   // Contains the logging level of the master.
